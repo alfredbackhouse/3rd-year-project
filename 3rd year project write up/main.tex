@@ -1,0 +1,247 @@
+\documentclass[12pt]{report}
+
+% Basic packages
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{hyperref}
+% \usepackage{natbib}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{natbib}
+\usepackage[parfill]{parskip}
+
+
+\title{Exploring the Synergy of Neural Networks and Cellular Automata in Computational Models}
+\author{Alfred Backhouse \\ University of Oxford}
+\date{\today}
+
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+% Your abstract here. Summarize the project, its objectives, methodology, and key findings.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\chapter{Introduction}
+
+% Why CA, why generative, build on existing work, create something unique etc. etc. 
+
+% The appeal of CAs lies is partly due to their parallels in many other areas. \cite{Wolfram2002} considered CAs to form the basis of "A New Kind of Science", arguing that most of the complexity of our world stems from simple rules interacting repeatedly, and that through CA and simulation we can able to unlock a new level of scientific understanding. Most notably in biological sciences, where our cells interact to create perhaps the most complex system created, the human brain. Therefore, by understanding CAs and the rules that govern them, we may hope to unlock a deeper understanding of the world around us. 
+
+\section{Background}
+
+\subsection{Cellular Automata}
+
+\subsubsection{Classical Cellular Automata}
+Cellular automata (CAs) consist of a grid of cells evolving over discrete time steps. A single set of rules is applied to all cells at every time step, updating the state of each cell according its current state and the state of nearby cells. Despite these deterministic, simple and local update rules, CAs are able to produce a wide range of outputs, from trivial patterns to emergent phenomenon of incredible complexity \citep{Wolfram2002}. 
+
+The most famous cellular automata is Conway's Game of Life, conceived by John Conway and popularised by Martin Gardner in his Scientific American article \citep{gardner1970ca}. The Game of Life has a certain elegance because its rule set is simple and intuitive yet the results are almost lifelike. Furthermore, the results are so complex and unpredictable that new patterns are still being discovered today, with a new "spaceship" pattern being discovered as recently as Jan 2024 (\url{https://conwaylife.com/wiki/Glider_synthesis} (cite properly)). 
+
+The Game of Life is setup as follows: 
+
+\begin{itemize}
+    \item \textbf{Grid and state space} There is a 2D grid, and cells occupy the state space $\{0, 1\}$ (considered "dead" and "alive") 
+    \item \textbf{Transition rules} Each cell looks at the cells in its immediate neighbourhood and itself
+    \begin{itemize}
+        \item Birth: a dead cell with exactly 3 live neighbours becomes a live cell
+        \item Survival: a live cell with 2 or 3 live neighbours remains alive
+        \item Death: a live cell with more than 3, or fewer than 2, live neighbours becomes a dead cell (representing over- and under- population respectively) 
+    \end{itemize}
+\end{itemize}
+
+This results in a system with emergent complexity. Some examples are shown in fig (insert fig!). 
+
+\subsubsection{Neural Cellular Automata (NCA)}
+
+While traditional CA can create interesting results with emergent complexity, it is natural to want to extend the capabilities to create even more complexity and also have more control over the ouptuts. \cite{mordvintsev2020growing} create continuous, differentiable CA which can grow into complex shapes such as emojis and are persistent, and can regenerate themselves after damage. The cells now run the states of the neighbouring cells through a neural network to calculate their next state at each timestep. These rules can then be optimised using backpropagation. As before, every cell follows the same set of rules and therefore has the same neural network. Here is the setup used in \cite{mordvintsev2020growing} to enforce the CA rules while allowing more complexity with the system. 
+
+\begin{itemize}
+    \item \textbf{Grid and state space:} There is a 2D grid. The statespace of the cells is $\mathbb{R}^{h+1}$. This is because each cell also has a series of hidden channels. This allows the cells to store and transmit information beyond what is seen in the RGB channels.
+    \item \textbf{Transition rules:} The architecture applies the following rules to every cell at each timestep:
+    \begin{enumerate}
+        \item \(X_1 = \text{Linear}_{9\times D_{\text{h1}}
+}(X)\) - Takes in the states of the cell's neighbours (a 9-dim vector when considering a \(3\times3\) neighbourhood) and applies a linear transformation.
+        \item \(X_2 = \text{Linear}_{D_{\text{h1}}
+\times D_{\text{h2}}
+}(X_1)\) - Applies a subsequent linear transformation.
+        \item \(X_3 = \text{Linear}_{D_{\text{h2}}
+\times h+1}(X_2)\) - Another linear layer produces the final output in $\mathbb{R}^{h+1}$. This is the state of the cell at the next timestep. 
+    \end{enumerate}
+    This sequence is parallelised across the entire grid using convolutions, with the equivalent operations being:
+    \begin{enumerate}
+        \item \(X_1 = \text{Conv}_{3\times3}^{D_{\text{h1}}}(X)\) - Applies a \(3\times3\) convolution with $D_{\text{h1}}$ filters.
+        \item \(X_2 = \text{Conv}_{1\times1}^{D_{\text{h2}}}(X_1)\) - Followed by a \(1\times1\) convolution with $D_{\text{h2}}$ filters.
+        \item \(X_3 = \text{Conv}_{1\times1}^{h+1}(X_2)\) - Another \(1\times1\) convolution to produce the final output in $\mathbb{R}^{h+1}$ as required.  
+    \end{enumerate}
+    This implements the NCA rules efficiently using standard ML frameworks. Note that the use of a single 3x3 filter followed by only 1x1 filters limits the receptive field of each cell to its immediate neighbours, as required \citep{GoodBengCour16}.
+    \item \textbf{Loss function:} The pixel wise L2 loss between the output and target images: 
+    \begin{equation*}
+        L_2(\hat{y}, y) = \sum_{i=1}^{N} (\hat{y}_i - y_i)^2
+    \end{equation*}
+
+\end{itemize}
+
+Picture of results here. 
+
+\subsubsection{Applications of Neural Cellular Automata}
+
+NCA have a couple of main applications which we discuss here. 
+
+\paragraph{Model compression:}
+
+CNN are so useful because they take advantage of the inherent local structures of image (or audio or video) data. Through repeated application of the same filters across entire images, they reduce the need for so many parameters making the networks quicker to train, and generalise better  \citep{LeCun2015DeepLearning}. NCA extend this a step further allowing the same filters to be applied many times over thus introducing a stronger inductive bias and decreasing the number of parameters required. 
+
+\cite{mordvintsev2021munca} show that NCA can be used to create extremely compact neural network architectures They create a texture synthesising network that reduces the parameter count from many thousands or more, to just 68. They call these "ultra-compact NCA" and are able to achieve state of the art performance in a significantly smaller model. 
+
+\cite{kalkhof2024frequencytime} create NCA that allow diffusion to be applied to massive images which would be out of the scope of traditional diffusion. By utilising the structure of NCA in this way, the authors are able to achieve strong image generation results, with significantly better results than the state of the art when restricted to the same parameter counts (although the state of the art is better when allowed more parameters). For this work, they did relax the CA rules significantly. 
+
+However, it is important to note that, despite having very few parameters, the networks still take a long time to train. This is because the network must be applied many times over for both the forward and backward passes, a problem which it shares with recurrent neural networks \cite{GoodBengCour16}.
+
+\paragraph{Exploring self-organising systems:} 
+
+A self-organising system is one that increases its organisation and complexity through local, internal processes without any central control. They appear across a huge variety of natural sciences, with examples such as ant colonies, chemical formation and social networks. A particularly useful example discussed by \cite{mordvintsev2020growing} is biological cells in humans, which follow roughly a single ruleset and yet create incredibly complex results. NCA provide a way to explore how these systems. \cite{variengien2021towards} trained NCA to self-organise into a "brain" which could balance a cart pole. \cite{randazzo2020self-classifying} trained NCA to classify MNIST digits by changing the colour of the digit until a consensus was reached. These works, and NCA in general, allow us to further our understanding of how self-organising systems work and can come about, as well as their limitations. 
+
+\subsection{GAN}
+
+However, most of the work so far is on NCA which create exact copies of the train data. There is little work on generative NCA (GNCA) which create unique and original pieces. Some work does touch on this with notable limitations. \cite{palm2022variational} and \cite{kalkhof2024frequencytime} both use the same, signifcant relaxations of the rules which turn the underlying models in VAEs, allowing the CA to up and down sample itself and fundamentally changing the setup. \cite{niklasson2021self-organising} create very interesting results with NCAs, but limit the work to texture generation. While this makes a lot of sense as NCA are well specialised to this, we would like to extend these methods to other areas. 
+
+To achieve the goal of creative NCAs while staying true to the strict, underlying rules, we require new, generative methods. We discuss a couple here, and then discuss why these have been chosen.
+
+\subsubsection{GAN introduction}
+
+A Generative Adversarial Network (GAN) is a generative modeling framework defined by a minimax game between two neural networks \cite{goodfellow2014GAN}:
+
+\begin{itemize}
+    \item \textbf{Generator ($G$):} A mapping \( G(z; \theta_g)\) from a  noise vector $z \sim p_z(z)$ (from a prior distribution $p_z$) to the data space. The goal of $G$ is to learn a distribution $p_g$ that approximates the real data distribution $p_{data}$.
+    
+    \item \textbf{Discriminator ($D$):} A function \( D(x; \theta_d)\) that estimates the probability a sample $x$ originated from the real data distribution $p_{data}$ rather than the generator's distribution $p_g$.
+
+    \item \textbf{Objective Function:} The GAN objective is expressed as a value function $V(G,D)$:
+\end{itemize}
+
+\begin{equation*}
+\min_G \max_D V(D, G) = \mathbb{E}_{x \sim p_{data}(x)}[\log D(x)] + \mathbb{E}_{z \sim p_z(z)}[\log(1 - D(G(z)))]
+\end{equation*}
+
+This formulation captures the essence of GANs as a game between a generator and a discriminator, where the generator aims to produce realistic samples to fool the discriminator, while the discriminator aims to distinguish between real and fake samples.
+
+The equilibrium of this game occurs when the generator distribution $p_g(x)$ matches the data distribution $p_{data}(x)$, i.e., $p_g(x) = p_{data}(x)$. At equilibrium, the discriminator cannot reliably distinguish between real and generated samples.The pseudocode implementation of the GAN framework can be seen in Algorithm \ref{alg:gan_training}
+
+\begin{algorithm}
+\caption{The GAN Algorithm}
+\label{alg:gan_training}
+\begin{algorithmic}
+\FOR{number of training iterations}
+    \STATE Sample minibatch of \(m\) noise samples \(\{z^{(1)}, \ldots, z^{(m)}\}\) from noise prior \(p_g(z)\).
+    \STATE Sample minibatch of \(m\) examples \(\{x^{(1)}, \ldots, x^{(m)}\}\) from data generating distribution \(p_{\text{data}}(x)\).
+    \STATE Update the discriminator by ascending its stochastic gradient:
+    \[
+    \nabla_{\theta_d} \frac{1}{m} \sum_{i=1}^m \left[ \log D(x^{(i)}) + \log (1 - D(G(z^{(i)}))) \right].
+    \]
+    \STATE Update the generator by descending its stochastic gradient:
+    \[
+    \nabla_{\theta_g} \frac{1}{m} \sum_{i=1}^m \log (1 - D(G(z^{(i)}))).
+    \]
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{GAN improvements}
+
+GANs are notoriously difficult to train \citep{goodfellow2014GAN, salimans2016improved} mostly due to:
+
+\begin{itemize}
+    \item \textbf{Mode Collapse:} The generator learns to produce a limited variety of outputs, rather than representing the full diversity of the target distribution. For example, if it was generating MNIST digits, it may find some digits much harder to generate and so not generate them at all. 
+    \item \textbf{Vanishing Gradients:} During training, the discriminator may become too effective such that the generator's gradients to tend to 0, halting the learning process.
+\end{itemize}
+
+There are a number of ways to address these issues and we discuss some of them here. 
+
+\begin{itemize}
+    \item \textbf{Minibatch Discrimination:} allows the discriminator to view a batch of samples all together. This helps to address mode collapse. \cite{salimans2016improved}
+    \item \textbf{One-sided label smoothing:} True labels are set to 0.9 instead of 1. This discourages the discriminator from becoming overly confident. \cite{salimans2016improved}
+    \item \textbf{Feature Matching:} The generator is trained to make the expected value of features on an intermediate layer of the discriminator similar between the real and fake data. This stabilizes training,  mitigates mode collapse and reduces overfitting to the discriminator. 
+\end{itemize}
+
+\paragraph{Wasserstein GAN:} Perhaps the most significant change to the GAN architecture is the Wasserstein GAN. This utilizes the Earth Mover distance instead of the Jenson Shanon distance used in a traditional GAN. The main advantage is that even if the supports (the areas of non-zero probability) of the real and fake distributions do not overlap, the Wasserstein distance still gives useful gradients, unlike in traditional GAN. This makes it much easier to trian and requires less careful hyperparameter tuning. The objective function is 
+\begin{equation*} \min_G \max_{D \in \mathcal{W}} \mathbb{E}_{\mathbf{x} \sim p_{data}(\mathbf{x})}[D(\mathbf{x})] - \mathbb{E}_{\mathbf{z} \sim p_{\mathbf{z}}(\mathbf{z})}[D(G(\mathbf{z}))]
+\end{equation*}
+Where $\mathcal{W}$ is the set of 1-Lipschitz functions. Also note that where traditionally the output of the discriminator is passed through a sigmoid and considered to be a probablity, WGAN outputs a scalar value. Therefore, instead of a discriminator we can consider it a critic, who rates the generated images on how realistic they are on a scale of $-\infty$ (fake) to  $+\infty$ (real).
+
+
+\subsection{GMMNs}
+
+Due to the difficulties of maintaining this delicate balance between the generator and discriminator, an alternative framework has been proposed \citep{li2015gmmn}. A Generative Moment Matching Netork (GMMN) is another type of generative model which is optimised by minimising the difference between the moments of the real and fake data distributions.  As with GANs, it is aiming to learn the distribution of the underlying data. Importantly, there is no discriminator. Instead the network minimises the Maximum Mean Discrepency (MMD) between the real and fake data. 
+
+\begin{itemize}
+\item \textbf{Generator ($G$):}This is identical to GANs. It's a mapping \( G(z; \theta_g)\) from a noise vector $z \sim p_z(z)$ (from a prior distribution $p_z$) to the data space. The goal of $G$ is to produce data that matches the distribution of real data $p_{data}$.
+
+    \item \textbf{Objective Function:}
+
+\begin{equation*}
+\min_G \mathcal{L}(G) = \text{MMD}^2\left(p_{data}, p_g\right)
+\end{equation*}
+
+The $\text{MMD}^2$ measures the difference between distributions P and Q as follows: 
+
+\begin{equation*}
+\text{MMD}^2[P, Q] = \mathbb{E}_{x, x' \sim P}[k(x, x')] + \mathbb{E}_{y, y' \sim Q}[k(y, y')] - 2\mathbb{E}_{x \sim P, y \sim Q}[k(x, y)]
+\end{equation*}
+
+Given samples from the distributions, we can estimate $\text{MMD}^2$ empirically as: 
+
+\begin{equation*}
+\hat{\text{MMD}}^2 = \frac{1}{n^2} \sum_{i=1}^n \sum_{i'=1}^n k(x_i, x_{i'}) + \frac{1}{m^2} \sum_{j=1}^m \sum_{j'=1}^m k(y_j, y_{j'}) - \frac{2}{nm} \sum_{i=1}^n \sum_{j=1}^m k(x_i, y_j)
+\end{equation*}
+
+\end{itemize}
+While the choice of kernel $k(x_i, x_{i'})$ is flexible, the Gaussian (RBF) kernel is a common choice since it is a universal kernel, rendering it theoretically capable of approximating any continuous function. The RBF kernel is: 
+
+\begin{equation*}
+k(x, x') = \exp\left(-\frac{\|x - x'\|^2}{2\sigma^2}\right)
+\end{equation*}
+
+\begin{algorithm}
+\caption{The GMMN Training Algorithm}
+\label{alg:gmmn_training}
+\begin{algorithmic}
+\FOR{number of training iterations}
+    \STATE Sample minibatch of \(m\) noise samples \(\{z^{(1)}, \ldots, z^{(m)}\}\) from noise prior \(p_z(z)\).
+    \STATE Sample minibatch of \(m\) examples \(\{x^{(1)}, \ldots, x^{(m)}\}\) from data generating distribution \(p_{\text{data}}(x)\).
+    \STATE Update the generator by descending its gradient with respect to the MMD criterion:
+    \[
+    \nabla_{\theta_g} \text{MMD}^2\left(\{x^{(1)}, \ldots, x^{(m)}\}, \{G(z^{(1)}), \ldots, G(z^{(m)})\}\right).
+    \]
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Other choices}
+
+We restrict our exploration to GANs and GMMNs primarily because of the strict rules of the NCA. In order to adhere to these precisely, we have to run the NCA a certain number of timesteps and then evaluate the results. Therefore, we are limited to methods which evaluate generated images against the original distribution with a single loss function on the outputs. 
+
+VAEs would not allow us to do this, as shown by \cite{palm2022variational} and \cite{kalkhof2024frequencytime} who actually change the rules significantly to allow the decoder part of the NCA to expand and copy itself, breaking the rules. 
+
+Given these conditions, GANs, WGANs and GMMNs are the most commonly cited methods within the literature and thus we attempt these. 
+
+A nice aside about GANs is that they have a natural interpretation. If we are trying to simulate biological processes which are governed by natural selection, then GANs provide a direct parallel since the generator and discriminator are competing against each other. However, note that our primary aim is the performance of the model under NCA conditions, and this is the drive behind the choice of framework.
+
+\chapter{Methods / Implementation}
+
+\subsection{Generative Neural Ceullar Automata}
+
+By combining NCA with GANs and GMMNs, we train NCA to generate unique and original results. To the best of our knowledge, neither of these methods have  successfully been applied to NCAs previously. ...
+
+\chapter{Evaluation}
+
+\bibliographystyle{apalike}
+\bibliography{References}
+\end{document}
